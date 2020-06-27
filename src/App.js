@@ -22,7 +22,13 @@ class App extends React.Component{
   componentDidMount()
   {
       firebase.initializeApp(firebaseConfig);
-      let user=firebase.database().ref('users')
+      this.getUserList()
+      this.getAccountsList()
+  }
+
+  // get user list from firebase
+  getUserList = () => {
+    let user=firebase.database().ref('users')
       user.on('value', (snapshot) => {
         let state = snapshot.val();
         for(let userdata in state)
@@ -30,43 +36,10 @@ class App extends React.Component{
             this.users.push(state[userdata])
         }
       });
-
-      this.accounts=firebase.database().ref('accounts')
-      this.accounts.on('value', (snapshot) => {
-        const state = snapshot.val();
-        for(let accountdata in state)
-        {
-           for(let i=0;i<this.users.length;i++)
-           {
-             if(this.users[i].account==accountdata)
-             {
-                let obj={title:state[accountdata].apps,account:this.users[i]['account'],user:this.users[i]['name']}
-                this.userAppData.push(obj)
-                this.setState({
-                  userAppData:this.userAppData
-                })
-                this.setState({
-                  ratings:state[accountdata].apps
-                })
-             } 
-           }
-        }
-      });
-      
   }
 
-  handle = (account,keys,ratings) =>{
-    let app=firebase.database().ref('accounts').child(account).child('apps').child(keys)
-    let title=''
-    let dd=firebase.database().ref('accounts').child(account).child('apps').child(keys);
-    app.on('value', (snapshot) => {
-      title=snapshot.val().title
-    })
-    dd.update({
-      title: title,
-      rating: ratings
-    });
-    this.userAppData=[]
+  //get accountlist from firebase and create object to render user list
+  getAccountsList = () =>{
     this.accounts=firebase.database().ref('accounts')
       this.accounts.on('value', (snapshot) => {
         const state = snapshot.val();
@@ -88,6 +61,21 @@ class App extends React.Component{
            }
         }
       });
+  }
+
+  //update realtime database in friebase
+  ratingFeedback = (account,keys,ratings) =>{
+    let app=firebase.database().ref('accounts').child(account).child('apps').child(keys)
+    let title=''
+    app.on('value', (snapshot) => {
+      title=snapshot.val().title
+    })
+    app.update({
+      title: title,
+      rating: ratings
+    });
+    this.userAppData=[]
+    this.getAccountsList()
   }
 
   render(){
@@ -121,7 +109,7 @@ class App extends React.Component{
                 {Object.keys(data.title).map((keys)=>{
                   return this.rating.map((val)=>{
                   return(
-                    <span style={{cursor:'pointer'}} className={clsx("fa fa-star",{"checked":val<=data.title[keys]['rating']})} onClick={()=>{this.handle(data.account,keys,val)}}></span>
+                    <span style={{cursor:'pointer'}} className={clsx("fa fa-star",{"checked":val<=data.title[keys]['rating']})} onClick={()=>{this.ratingFeedback(data.account,keys,val)}}></span>
                   )
                 })
               })}
